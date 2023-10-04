@@ -1,0 +1,114 @@
+---
+title: "Elasticities"
+author: "Nathan Wise"
+date: "2023-09-12"
+output: word_document
+---
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+setwd("C:/Users/wisen/OneDrive/Desktop/Work Stuff/PHD/Second Year/IO/Project/Elasticities")
+library(haven)
+library(dplyr)
+library(ivreg)
+library(sandwich)
+library(lmtest)
+library(psych)
+library(stargazer)
+library(ggplot2)
+library(evd)
+```
+
+```{r}
+#Read in the Data
+setwd("C:/Users/wisen/OneDrive/Desktop/Work Stuff/PHD/Second Year/IO/Project/Elasticities")
+obols <- read.csv("ownbasicols.csv")
+obiv <- read.csv("ownbasiciv.csv")
+onols <- read.csv("ownnestedols.csv")
+oniv <- read.csv("ownnestediv.csv")
+orc <- read.csv("ownrc.csv")
+
+cbols <- read.csv("crossbasicols.csv")
+cbiv <- read.csv("crossbasiciv.csv")
+cnols <- read.csv("crossnestedols.csv")
+cniv <- read.csv("crossnestediv.csv")
+crc <- read.csv("crossrc.csv")
+
+#cbols <- cbols[-1,]
+#cbiv <- cbiv[-1,]
+#cnols <- cnols[-1,]
+#cniv <- cniv[-1,]
+#crc <- crc[-1,]
+```
+
+
+```{r}
+ggplot(obols, aes(x=obols[,2])) +
+  geom_density() + 
+  ggtitle("Density of Own Price Elasticities, Logit/OLS")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+```{r}
+ggplot(obiv, aes(x=obiv[,2])) +
+  geom_density() + 
+  ggtitle("Density of Own Price Elasticities, Logit/IV")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+```{r}
+ggplot(onols, aes(x=onols[,2])) +
+  geom_density() + 
+  ggtitle("Density of Own Price Elasticities, Nested Logit/OLS")+
+  labs(x = "Estimated Elasticities", y = "Density")
+``` 
+```{r}
+ggplot(oniv, aes(x=oniv[,2])) +
+  geom_density() + 
+  ggtitle("Density of Own Price Elasticities, Nested Logit/IV")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+
+
+```{r}
+ggplot(orc, aes(x=orc[,2])) +
+  geom_density() + 
+  ggtitle("Density of Own Price Elasticities, Random Coefficients")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+```{r}
+#Begin Cross price elasticities
+ggplot(cbols, aes(x=cbols[,2])) +
+  geom_density() + 
+  ggtitle("Density of Cross Price Elasticities, Logit/OLS")+
+  labs(x = "Estimated Elasticities", y = "Density")
+
+```
+```{r}
+ggplot(cbiv, aes(x=cbiv[,2])) +
+  geom_density() + 
+  ggtitle("Density of Cross Price Elasticities, Logit/IV")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+```{r}
+ggplot(cnols, aes(x=cnols[,2])) +
+  geom_density() + 
+  ggtitle("Density of Cross Price Elasticities, Nested Logit/OLS")+
+  labs(x = "Estimated Elasticities", y = "Density")
+
+```
+
+```{r}
+ggplot(cniv, aes(x=cniv[,2])) +
+  geom_density() + 
+  ggtitle("Density of Cross Price Elasticities, Nested Logit/IV")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+```{r}
+ggplot(crc, aes(x=crc[,2])) +
+  geom_density() + 
+  ggtitle("Density of Cross Price Elasticities, Random Coefficients")+
+  labs(x = "Estimated Elasticities", y = "Density")
+```
+

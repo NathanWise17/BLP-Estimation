@@ -1,0 +1,39 @@
+---
+title: "Graphing Markups"
+author: "Nathan Wise"
+date: "2023-09-28"
+output:
+  word_document: default
+  pdf_document: default
+---
+```{r}
+library(ggplot2)
+setwd("C:/Users/wisen/OneDrive/Desktop/Work Stuff/PHD/Second Year/IO/Project/Markups")
+
+mumulti <- read.csv("mumutest.csv")
+musingle <- read.csv("mustest.csv")
+mumonop <- read.csv("mumtest.csv")
+
+mufull <- mumulti
+mufull$multi <- mumulti$X0
+mufull$single <- musingle$X0
+mufull$monop <- mumonop$X0
+
+plot <- ggplot() +
+  geom_density(data = data.frame(x=mufull$multi), aes(x=x),color = "black") +
+  geom_density(data = data.frame(x = mufull$single), aes(x=x),color = "blue") + 
+  geom_density(data= data.frame(x = mufull$monop), aes(x=x), color = "red") +
+  labs(title = "Density Plot of Markups",x = "Markup Amount", y = "Density")
+
+plot <- plot + 
+  xlim(-.005,.005)
+
+plot
+
+plot2 <- plot + xlim(-.002,.002)
+plot2
+
+plot3 <- plot + xlim(-.0003,.0003)
+plot3
+```
+

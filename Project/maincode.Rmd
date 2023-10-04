@@ -1,0 +1,336 @@
+---
+title: "IOProject"
+author: "Nathan Wise"
+date: "9/8/2023"
+output: word_document
+---
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+setwd("C:/Users/wisen/OneDrive/Desktop/Work Stuff/PHD/Second Year/IO/Project")
+didata <- read.csv("estimateddi.csv")
+library(haven)
+library(dplyr)
+library(ivreg)
+library(sandwich)
+library(lmtest)
+library(psych)
+library(stargazer)
+library(ggplot2)
+library(evd)
+library(gmm)
+library(tidyverse)
+```
+
+```{r}
+#Read in the Data
+data <- read_dta("WBER.dta")
+#data1 <- read_dta("WBERtest.dta")
+```
+
+
+```{r}
+#Creates Variables of Interest
+
+data$adjstore <- ifelse(data$store == 98, 1, ifelse(data$store == 100, 2, ifelse(data$store == 101, 3, ifelse(data$store == 102, 4, ifelse(data$store == 103, 5, ifelse(data$store == 105, 6, ifelse(data$store == 122, 7, ifelse(data$store == 128, 8, 9))))))))
+
+data$wp <- data$price * (1-(data$profit/100))
+data$mks <- data$move / data$custcoun
+
+data <- data %>%
+  mutate(market = paste(store,week,sep="_"))
+
+sumshare <- data %>%
+  group_by(market) %>%
+  summarise(
+    summks = sum(mks)
+  )
+
+data <- data %>%
+  left_join(sumshare, by = "market")
+
+data$csame <- ifelse(data$Brand == 18200, 1, ifelse(data$Brand == 34100, 6, 1))
+data$cdiff <- ifelse(data$Brand == 18200, 9, ifelse(data$Brand == 34100, 4, 9))
+
+data$Prod1 <- as.numeric(data$upc == 1820000016)
+data$Prod2 <- as.numeric(as.numeric(data$upc) == 1820011168)
+data$Prod3 <- as.numeric(data$upc == 3410000354)
+data$Prod4 <- as.numeric(data$upc == 3410000554)
+data$Prod5 <- as.numeric(data$upc == 3410017306)
+data$Prod6 <- as.numeric(data$upc == 3410017505)
+data$Prod7 <- as.numeric(data$upc == 3410057306)
+data$Prod8 <- as.numeric(data$upc == 3410057528)
+data$Prod9 <- as.numeric(data$upc == 3410057602)
+data$Prod10 <- as.numeric(data$upc == 7336011341)
+data$Prod11 <- as.numeric(data$upc == 7336011751)
+
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+#Shares
+total_share = 1
+Outside_share = total_share - data$summks
+data$os <- Outside_share
+data$y <- log(data$mks / data$os)
+colnames(data) <- c("store","upc","week","move","price","profit","descrip","custcoun","brand","adjstore","wp","mks","market","summks","csame","cdiff","Prod1","Prod2","Prod3","Prod4","Prod5","Prod6","Prod7","Prod8","Prod9","Prod10","Prod11","os","y")
+head(data)
+```
+```{r}
+#Data Description
+description1 <- describe(data)
+description2 <- summary(data)
+descripdata <- data[c("move","price","profit","custcoun","wp","mks","os")]
+stargazer(data.frame(descripdata),title="Descriptive Statistics of Key Variables")
+
+```
+
+```{r}
+average_prices <- data %>%
+  group_by(week,upc) %>%
+  summarize(Average_price = mean(price))
+
+average_prices$upc <- factor(average_prices$upc)
+upc_colors <- c("1820000016" = "deeppink4",
+                "1820011168" = "salmon",
+                "3410000354" = "blue",
+                "3410000554" = "turquoise",
+                "3410017306" = "cyan",
+                "3410017505" = "navy",
+                "3410057306" = "magenta",
+                "3410057528" = "purple",
+                "3410057602" = "violet",
+                "7336011341" = "green",
+                "7336011751" = "limegreen")
+
+ggplot(average_prices, aes(x = week, y =Average_price, group = upc, color = upc)) + 
+  geom_line()+
+  scale_color_manual(values = upc_colors) +
+  labs(title = "Average Price by Week", 
+       x = "Week",
+       y = "Average Price")
+```
+```{r}
+average_prices <- data %>%
+  group_by(week,store) %>%
+  summarize(Average_price = mean(price))
+average_prices$store <- factor(average_prices$store)
+ggplot(average_prices, aes(x = week, y =Average_price, group = store, color = store)) + 
+  geom_line()+
+  labs(title = "Average Price by Week", 
+       x = "Week",
+       y = "Average Price")
+```
+```{r}
+
+```
+
+
+```{r}
+#Calculating Average Prices by product
+
+avgpricebyweek <- data %>%
+  group_by(upc, week) %>%
+  summarise(avg_price_product = mean(price,na.rm = TRUE))
+
+data <- data %>%
+  left_join(avgpricebyweek,by = c("upc","week"))
+
+data$pricediff_product <- data$price - data$avg_price_product
+```
+
+
+```{r}
+product_1_data <- data %>%
+  filter(upc %in% c(1820000016, 1820011168))
+
+average_prices <- product_1_data %>%
+  group_by(week,store) %>%
+  summarize(Average_price = mean(price))
+
+
+average_prices$store <- factor(average_prices$store)
+
+ggplot(average_prices, aes(x = week, y = Average_price, group = store, color = store)) +
+  geom_line() + 
+  labs(title = "Average Price for Brand 1 by Store",
+       x = "Week",
+       y = "Average Price")
+```
+```{r}
+product_2_data <- data %>%
+  filter(upc %in% c(3410000354,3410000554,3410017306,3410017505,3410057306,3410057528,3410057602))
+
+average_prices <- product_2_data %>%
+  group_by(week,store) %>%
+  summarize(Average_price = mean(price))
+
+
+average_prices$store <- factor(average_prices$store)
+
+ggplot(average_prices, aes(x = week, y = Average_price, group = store, color = store)) +
+  geom_line() + 
+  labs(title = "Average Price for Brand 2 by Store",
+       x = "Week",
+       y = "Average Price")
+```
+```{r}
+product_3_data <- data %>%
+  filter(upc %in% c(7336011341, 7336011751))
+
+average_prices <- product_3_data %>%
+  group_by(week,store) %>%
+  summarize(Average_price = mean(price))
+
+
+average_prices$store <- factor(average_prices$store)
+
+ggplot(average_prices, aes(x = week, y = Average_price, group = store, color = store)) +
+  geom_line() + 
+  labs(title = "Average Price for Brand 3 by Store",
+       x = "Week",
+       y = "Average Price")
+```
+
+
+
+```{r}
+product_2_data <- data %>%
+  filter(upc %in% c())
+```
+
+
+
+```{r}
+OLSlogit1 <- lm(y ~ price + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+summary(OLSlogit1)
+```
+
+```{r}
+#2SLS with wholesale
+tslswp <- lm(price ~ wp + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+pricewp.hat <- fitted.values(tslswp)
+tsls2baselogit <- lm(y ~ pricewp.hat + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+tslswpr <- coeftest(tsls2baselogit,vcov = vcovHC(tsls2baselogit,type="HC1"))
+
+ivwp <- ivreg(y ~ price + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0 | wp + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+ivwpr <- coeftest(ivwp,vcov = vcovHC(ivwp,type="HC1"))
+ivwpr
+tslswpr
+
+```
+```{r}
+stargazer(OLSlogit1,tslswpr,ivwpr)
+```
+
+
+```{r}
+#2SLS with same counts
+tslssc <- lm(price ~ csame + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+pricecs.hat <- fitted.values(tsls1)
+tsls2cs <- lm(y ~ pricecs.hat + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+tssc <- coeftest(tsls2cs,vcov = vcovHC(tsls2cs,type="HC1"))
+
+ivcssc <- ivreg(y ~ price + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0 | csame + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+summary(ivcssc)
+ivsc <- coeftest(ivcssc,vcov = vcovHC(ivcssc,type="HC1"))
+
+ivsc
+```
+```{r}
+#2SLS with other producer counts
+tslspc <- lm(price ~ cdiff + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+pricecd.hat <- fitted.values(tsls1)
+tsls2cd <- lm(y ~ pricecd.hat + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+coeftest(tsls2cd,vcov = (vcovHC(tsls2cd,"HC1")))
+
+
+```
+```{r}
+stargazer(OLSlogit1,tslswp,tslssc,tslspc)
+```
+
+```{r}
+#Nested Logit OLS
+
+data$withingroupshare <- data$mks / data$summks
+Nestedlogitols <- lm(y ~ price + log(withingroupshare) + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+summary(Nestedlogitols)
+coeftest(Nestedlogitols, vcov = vcovHC(Nestedlogitols,type = "HC1"))
+```
+
+
+```{r}
+#Nested Logit IV
+tsls1 <- lm(price ~ wp + log(withingroupshare) + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+pricewp.hat <- fitted.values(tsls1)
+tsls2 <- lm(y ~ pricewp.hat + log(withingroupshare) + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+coeftest(tsls2,vcov = vcovHC(tsls2,type="HC1"))
+
+ivwp2 <- ivreg(y ~ price + log(withingroupshare) + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0 | wp + log(withingroupshare) + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+
+summary(ivwp2)
+coeftest(ivwp2,vcov = vcovHC(ivwp2,type="HC1"))
+```
+```{r}
+stargazer(Nestedlogitols,tsls2,ivwp2)
+```
+
+```{r}
+write.csv(data,"data.csv")
+```
+
+```{r}
+#cleandata <- select(data,price,withingroupshare,Prod2,Prod3,Prod4,Prod5,Prod6,Prod7,Prod8,Prod9,Prod10,Prod11)
+
+#ind_num = 50
+#errortermgen = ind_num * 10296
+#set.seed(42)
+#madeupvar <- rgumbel(errortermgen)
+#predutility <- cleandata
+#predutilityadd <- cleandata
+#for(x in 1:(ind_num - 1)){
+#  predutility <- rbind(predutility,predutilityadd)
+#}
+#predutility$madeupvariable <- madeupvar
+#predutility$utilityolsbaselogit <- predict(OLSlogit1,predutility) + predutility$madeupvariable
+#predutility$utilityivbaselogit <- predict(tsls2baselogit,predutility) + predutility$madeupvariable
+
+#predutility$utilityolsnested <- predict(Nestedlogitols,predutility) - 0.8231629*log(predutility$withingroupshare) + #predutility$madeupvariable
+#predutility$utilityivnested <- predict(tsls2,predutility) - 0.7606034 * log(predutility$withingroupshare) + #predutility$madeupvariable
+```
+
+```{r}
+didata <- read.csv("estimateddi.csv")
+```
+
+```{r}
+data$estimateddi <- didata$X0
+ivwp3 <- ivreg(estimateddi ~ price + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0 | wp + Prod1 + Prod2 + Prod3 + Prod4 + Prod5 + Prod6 + Prod7 + Prod8 + Prod9 + Prod10 + Prod11 +0, data = data)
+coeftest(ivwp3,vcov = vcovHC(ivwp3,type="HC1"))
+
+```
+```{r}
+firststagedata <- data[,c(11,17:27)]
+secondstagedata <- data[,c(5,17:27)]
+
+write.csv(firststagedata,"fsd.csv")
+write.csv(secondstagedata,"ssd.csv")
+
+
+
+```
+
